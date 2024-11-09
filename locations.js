@@ -86,7 +86,7 @@ markers = [['2724', 'Palomino Freeway Gas Station / 24/7', 'located inside the L
 ['2814', 'Aguja Street Bank', '', '1', '-1353.422', '-1105.5825'],
 ['2815', 'Aguja Street Bank', 'located inside the store', '1', '-1038.3022', '147.04076'],
 ['2816', 'Downtown Vinewood Bank', '', '1', '202.03595', '258.92596'],
-['2818', 'Downtown Vinewood Bank', '', '1', '222.27489', '249.80647'],
+['2818', 'Downtown Vinewood Bank Test', '', '1', '222.27489', '249.80647'],
 ['2820', 'Downtown Vinewood Bank', '', '1', '214.71742', '230.95062'],
 ['2821', 'Palomino Avenue Bank', '', '1', '-1109.8225', '-816.83307'],
 ['2822', 'Bay City Avenue Bank', '', '1', '-1038.3539', '147.2267'],
