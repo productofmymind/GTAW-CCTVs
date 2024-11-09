@@ -1,0 +1,382 @@
+﻿<!DOCTYPE html>
+<!-- Inspired by GTA:W Properties Map -->
+<head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no"/>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8"/>
+    <title>GTAW CCTV Map</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js-legacy@5/dist/pixi-legacy.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-pixi-overlay/L.PixiOverlay.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js" integrity="sha512-vc58qvvBdrDR4etbxMdlTt4GBQk1qjvyORR2nrsPsFPyrs+/u5c3+1Ct6upOgdZoIl7eq6k3a1UPDSNAQi/32A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="src/leaflet-search.js"></script>
+    <script src="https://map.gta.world/tools.min.js.download"></script>
+    <link rel="stylesheet" href="src/leaflet.awesome-markers.css">
+    <script src="src/leaflet.awesome-markers.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery//jquery.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="data/locations.js"></script>
+    <script type="text/javascript" src="locations.js"></script>
+</head>
+<body>
+    <div id="map" style="width:100%;"></div>
+    <script>
+        function readTextFile(file, callback) {
+            var rawFile = new XMLHttpRequest();
+            rawFile.overrideMimeType('application/json');
+            rawFile.open('GET', file, true);
+            rawFile.onreadystatechange = function () {
+                if (rawFile.readyState === 4 && rawFile.status == '200') {
+                    callback(rawFile.responseText);
+                }
+            };
+            rawFile.send(null);
+        }
+
+        readTextFile('data/streets.json', function (text) {
+            dataStreets = JSON.parse(text);
+        });
+
+        var emergencyCalls = L.layerGroup();
+
+        var popupOptions = {
+            maxWidth: '512',
+            className: 'custom',
+        };
+    </script>
+    <script>
+        var center_of_map_offset_x = 117.3;
+        var center_of_map_offset_y = 172.8;
+        var scale_x_axis = 0.02072;
+        var scale_y_axis = 0.0205;
+
+        L.CRS.GTAWCustomCRS = L.extend({}, L.CRS.Simple, {
+            projection: L.Projection.LonLat,
+
+            transformation: new L.Transformation(
+                scale_x_axis,
+                center_of_map_offset_x,
+                -scale_y_axis,
+                center_of_map_offset_y,
+            ),
+
+            distance: function (pos1, pos2) {
+                var x_difference = pos2.lng - pos1.lng;
+                var y_difference = pos2.lat - pos1.lat;
+                return Math.sqrt(x_difference * x_difference + y_difference * y_difference);
+            },
+            scale: function (zoom) {
+                return Math.pow(2, zoom);
+            },
+            zoom: function (sc) {
+                return Math.log(sc) / 0.6931471805599453;
+            },
+            infinite: true,
+        });
+
+        var loader = new PIXI.Loader();
+        loader.add('cctv', 'blips/cctv1.png')
+        document.addEventListener('DOMContentLoaded', function () {
+            loader.load(function (loader, resources) {
+                var textures = [resources.cctv.texture];
+
+                var mbAttr = 'made by monster & george?',
+                    mbUrlAtlas = 'https://map.gta.world/mapStyles/styleAtlas/{z}/{x}/{y}.jpg',
+                    mbUrlSatelite = 'https://map.gta.world/mapStyles/styleSatelite/{z}/{x}/{y}.jpg',
+                    mbUrlGrid = 'https://map.gta.world/mapStyles/styleGrid/{z}/{x}/{y}.png',
+                    mbUrlStreet = 'https://map.gta.world/mapStyles/styleStreet/{z}/{x}/{y}.jpg';
+
+                var atlas = L.tileLayer(mbUrlAtlas, {
+                        id: 'mapbox.atlas',
+                        attribution: mbAttr,
+                        noWrap: false,
+                        continuousWorld: false,
+                        minZoom: 0,
+                        maxZoom: 5,
+                        Zoom: 3,
+                    }),
+                    satellite = L.tileLayer(mbUrlSatelite, {
+                        id: 'mapbox.light',
+                        attribution: mbAttr,
+                        noWrap: false,
+                        continuousWorld: false,
+                        minZoom: 0,
+                        maxZoom: 5,
+                        Zoom: 3,
+                    }),
+                    grid = L.tileLayer(mbUrlGrid, {
+                        id: 'mapbox.grid',
+                        attribution: mbAttr,
+                        noWrap: false,
+                        continuousWorld: false,
+                        minZoom: 0,
+                        maxZoom: 5,
+                        Zoom: 3,
+                    }),
+                    streets = L.tileLayer(mbUrlStreet, {
+                        id: 'mapbox.street',
+                        attribution: mbAttr,
+                        noWrap: false,
+                        continuousWorld: false,
+                        minZoom: 0,
+                        maxZoom: 5,
+                        Zoom: 3,
+                    });
+
+                var map = L.map('map', {
+                    crs: L.CRS.GTAWCustomCRS,
+                    minZoom: 1,
+                    maxZoom: 5,
+                    Zoom: 5,
+                    maxNativeZoom: 5,
+                    preferCanvas: true,
+
+                    layers: [satellite, emergencyCalls],
+                });
+
+                map.setView([-1192.7, -135.1], 3);
+
+                var baseLayers = {
+                    Atlas: atlas,
+                    Streets: streets,
+                    Satellite: satellite,
+                    Grid: grid,
+                };
+
+                var overlays = {
+                    CCTV: emergencyCalls,
+                };
+
+                var markersLayer = new L.LayerGroup();
+                map.addLayer(markersLayer);
+
+                var controlSearch = new L.Control.Search({
+                    layer: markersLayer,
+
+                    position: 'topleft',
+
+                    collapsed: false,
+
+                    firstTipSubmit: true,
+
+                    initial: false,
+
+                    zoom: 12,
+                });
+                map.addControl(controlSearch);
+
+                for (i in dataStreets) {
+                    var title = dataStreets[i].title,
+                        loc = dataStreets[i].loc,
+                        marker = new L.Marker(
+                            new L.latLng(loc),
+                            {
+                                title: title,
+                            },
+                            {
+                                icon: iconLocation,
+                            },
+                        );
+
+                    marker.setOpacity(0);
+                    markersLayer.addLayer(marker);
+                }
+
+                var controlLayers = new L.control.layers(baseLayers, overlays, {
+                    collapsed: false,
+                    position: 'bottomright',
+                });
+                map.addControl(controlLayers);
+
+                map.on('click', function (e) {
+                    var coord = e.latlng;
+                    var lat = coord.lat.toFixed(1);
+                    var lng = coord.lng.toFixed(1);
+                    console.log(lat + ',' + lng);
+                    var coords = document.createElement('textarea');
+                    document.body.appendChild(coords);
+                    coords.value = lat + ',' + lng;
+                    coords.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(coords);
+                });
+                map.zoomControl.setPosition('bottomright');
+                var pixiLayer = (function () {
+                    var firstDraw = true;
+                    var prevZoom;
+                    var markerSprites = [];
+                    var frame = null;
+                    var focus = null;
+                    var pixiContainer = new PIXI.Container();
+                    var doubleBuffering = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                    return L.pixiOverlay(
+                        function (utils) {
+                            var zoom = utils.getMap().getZoom();
+                            if (frame) {
+                                cancelAnimationFrame(frame);
+                                frame = null;
+                            }
+                            var container = utils.getContainer();
+                            var renderer = utils.getRenderer();
+                            var project = utils.latLngToLayerPoint;
+                            var scale = utils.getScale();
+                            var invScale = 1 / scale;
+                            if (firstDraw) {
+                                prevZoom = zoom;
+                                markers.forEach(function (marker) {
+                                    var coords = project([marker[4], marker[5]]);
+                                    var index = Math.floor(Math.random() * textures.length);
+                                    var markerSprite = new PIXI.Sprite(textures[index]);
+                                    markerSprite.textureIndex = index;
+                                    markerSprite.x0 = coords.x;
+                                    markerSprite.y0 = coords.y;
+                                    markerSprite.anchor.set(0.5, 0.5);
+                                    container.addChild(markerSprite);
+                                    markerSprites.push(markerSprite);
+                                    markerSprite.name = marker[1];
+                                    markerSprite.modifiers = marker[2];
+                                    markerSprite.id = marker[0];
+                                });
+                                var quadTrees = {};
+                                for (var z = map.getMinZoom(); z <= map.getMaxZoom(); z++) {
+                                    var rInit = (z <= 7 ? 16 : 24) / utils.getScale(z);
+                                    quadTrees[z] = window.solveCollision(markerSprites, {
+                                        r0: rInit,
+                                        zoom: z,
+                                    });
+                                }
+
+                                function findMarker(ll) {
+                                    var layerPoint = project(ll);
+                                    var quadTree = quadTrees[utils.getMap().getZoom()];
+                                    var marker;
+                                    var rMax = quadTree.rMax;
+                                    var found = false;
+                                    quadTree.visit(function (quad, x1, y1, x2, y2) {
+                                        if (!quad.length) {
+                                            var dx = quad.data.x - layerPoint.x;
+                                            var dy = quad.data.y - layerPoint.y;
+                                            var r = quad.data.scale.x * 16;
+                                            if (dx * dx + dy * dy <= r * r) {
+                                                marker = quad.data;
+                                                found = true;
+                                            }
+                                        }
+                                        return (
+                                            found ||
+                                            x1 > layerPoint.x + rMax ||
+                                            x2 + rMax < layerPoint.x ||
+                                            y1 > layerPoint.y + rMax ||
+                                            y2 + rMax < layerPoint.y
+                                        );
+                                    });
+                                    return marker;
+                                }
+                                map.on('click', function (e) {
+                                    var marker = findMarker(e.latlng);
+                                    if (marker) {
+                                        marker.popup = L.popup({
+                                            className: 'pixi-popup',
+                                        })
+                                            .setLatLng(e.latlng)
+                                            .setContent(
+                                                '<b>' +
+                                                    marker.name +
+                                                    '</b><br> Modifiers: ' +
+                                                    marker.modifiers +
+                                                    '<br> CCTV ID: ' +
+                                                    marker.id,
+                                            )
+                                            .openOn(map);
+                                    }
+                                });
+                                var self = this;
+                                map.on(
+                                    'mousemove',
+                                    L.Util.throttle(function (e) {
+                                        var marker = findMarker(e.latlng);
+                                        if (marker) {
+                                            L.DomUtil.addClass(self._container, 'leaflet-interactive');
+                                        } else {
+                                            L.DomUtil.removeClass(self._container, 'leaflet-interactive');
+                                        }
+                                    }, 32),
+                                );
+                            }
+                            if (firstDraw || prevZoom !== zoom) {
+                                markerSprites.forEach(function (markerSprite) {
+                                    var position = markerSprite.cache[zoom];
+                                    if (firstDraw) {
+                                        markerSprite.x = position.x;
+                                        markerSprite.y = position.y;
+                                        markerSprite.scale.set(
+                                            position.r * scale < 2 ? position.r / 2 : invScale,
+                                        );
+                                    } else {
+                                        markerSprite.currentX = markerSprite.x;
+                                        markerSprite.currentY = markerSprite.y;
+                                        markerSprite.targetX = position.x;
+                                        markerSprite.targetY = position.y;
+                                        markerSprite.currentScale = markerSprite.scale.x;
+                                        markerSprite.targetScale =
+                                            position.r * scale < 2 ? position.r / 2 : invScale;
+                                    }
+                                });
+                            }
+
+                            var start = null;
+                            var delta = 250;
+
+                            function animate(timestamp) {
+                                var progress;
+                                if (start === null) start = timestamp;
+                                progress = timestamp - start;
+                                var lambda = progress / delta;
+                                if (lambda > 1) lambda = 1;
+                                lambda = lambda * (0.4 + lambda * (2.2 + lambda * -1.6));
+                                markerSprites.forEach(function (markerSprite) {
+                                    markerSprite.x =
+                                        markerSprite.currentX +
+                                        lambda * (markerSprite.targetX - markerSprite.currentX);
+                                    markerSprite.y =
+                                        markerSprite.currentY +
+                                        lambda * (markerSprite.targetY - markerSprite.currentY);
+                                    markerSprite.scale.set(
+                                        markerSprite.currentScale +
+                                            lambda * (markerSprite.targetScale - markerSprite.currentScale),
+                                    );
+                                });
+                                renderer.render(container);
+                                if (progress < delta) {
+                                    frame = requestAnimationFrame(animate);
+                                }
+                            }
+                            if (!firstDraw && prevZoom !== zoom) {
+                                frame = requestAnimationFrame(animate);
+                            }
+                            firstDraw = false;
+                            prevZoom = zoom;
+                            renderer.render(container);
+                        },
+                        pixiContainer,
+                        {
+                            doubleBuffering: doubleBuffering,
+                            destroyInteractionManager: true,
+                        },
+                    );
+                })();
+                pixiLayer.addTo(emergencyCalls);
+            });
+        });
+    </script>
+    <script>
+        window.FontAwesomeConfig = {
+            searchPseudoElements: true
+        }
+    </script>
+</body>
+</html>
