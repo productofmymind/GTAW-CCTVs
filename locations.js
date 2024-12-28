@@ -326,7 +326,7 @@ markers = [
         ['3109', 'Surtrs Lair', 'Located inside. Press Y', '1', '-1450.4095', '67.99101'],
         ['3110', 'Vallery Side Ink', '1', '1', '2745.2556', '609.92706'],
         ['3111', 'Vallery Side Ink', 'Located inside. Press Y', '1', '2749.0994', '605.66296'],
-        ['3114', 'Sinner Ink', 'Located inside. Press Y', '1', '-786.6535', '389.71957']
+        ['3114', 'Sinner Ink', 'Located inside. Press Y', '1', '-786.6535', '389.71957'],
         ['3278', 'Davis LTD', 'Located inside.', '1', '-1752.4581', '-56.473442'],
         ['3279', 'Davis LTD', 'Located inside', '1', '-1754.9248', '-42.814384']
 ]
