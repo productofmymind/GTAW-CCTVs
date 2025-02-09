@@ -20,7 +20,6 @@ markers = [
 ['2734', 'Strawberry Gas Station', '360 degree camera', '1', '-1262.2308', '266.7651'],
 ['2735', 'Downtown Vinewood Gas Station', '360 degree camera', '1', '268.04623', '622.18835'],
 ['2736', 'Downtown Vinewood Gas Station', '360 degree camera', '1', '248.68239', '635.2403 '],
-['2738', 'Strawberry Gas Station', 'located inside the LTD', '1', '-1752.0073', '-56.86824'],
 ['2739', 'La Puerta Marina Boat Gas Station', '', '1', '-1321.494', '-881.25397'],
 ['2743', 'Calais Avenue Gas Station', '360 degree camera', '1', '-1211.1619', '-524.80273'],
 ['2744', 'Calais Avenue Gas Station', 'located inside the LTD', '1', '-915.56244', '-717.07434'],
